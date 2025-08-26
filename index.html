@@ -4,48 +4,65 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Location Logger</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    button { margin-top: 1rem; padding: 0.5rem 1rem; }
+  </style>
 </head>
 <body>
   <h1>Location Logger</h1>
   <p id="status">Waiting for location...</p>
+  <button id="retryBtn" style="display:none;">Retry</button>
 
   <script>
     const statusEl = document.getElementById('status');
+    const retryBtn = document.getElementById('retryBtn');
     const scriptUrl = "https://script.google.com/macros/s/AKfycbxngLPEPkH6RJpvLEZWtXD2Z96zyUDFRfyhYShkTqqxskhFpy-wAijewXTZP91h5iTd/exec";
 
-    // Check if geolocation is supported
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(success, error);
-    } else {
-      statusEl.textContent = "Geolocation is not supported by your browser.";
+    function requestLocation() {
+      statusEl.textContent = "Requesting location...";
+      retryBtn.style.display = "none";
+
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(sendLocation, handleError, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
+      } else {
+        statusEl.textContent = "Geolocation is not supported by your browser.";
+      }
     }
 
-    function success(position) {
+    function sendLocation(position) {
       const lat = position.coords.latitude;
       const lon = position.coords.longitude;
-
       statusEl.textContent = `Latitude: ${lat}, Longitude: ${lon}. Sending to server...`;
 
-      // Send data to Google Apps Script
       fetch(scriptUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: `lat=${lat}&lon=${lon}`
       })
       .then(response => response.text())
       .then(text => {
-        statusEl.textContent = text; // Should show "Location saved!"
+        statusEl.textContent = text; // "Location saved!"
       })
       .catch(err => {
         statusEl.textContent = "Error sending location: " + err;
+        retryBtn.style.display = "inline";
       });
     }
 
-    function error(err) {
+    function handleError(err) {
       statusEl.textContent = "Error getting location: " + err.message;
+      retryBtn.style.display = "inline";
     }
+
+    retryBtn.addEventListener('click', requestLocation);
+
+    // Initial request
+    requestLocation();
   </script>
 </body>
 </html>
